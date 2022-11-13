@@ -55,7 +55,12 @@ public class AStarV2 : MonoBehaviour
         {
             Obstacles();
         }
-        
+
+        foreach (Vector2Int v in blockedPos)
+        {
+            Node c = new Node(v, 0, 0);
+            closedList.Add(c);
+        }
         
         Pathfinding();
 
@@ -67,10 +72,10 @@ public class AStarV2 : MonoBehaviour
     {
         Vector2Int startPos = Vector3ToVector2Int(transform.position);
         Vector2Int goalPos = Vector3ToVector2Int(goalTransform.position);
-        
+
         // create start node
         Node startNode = new Node(startPos, 0, 0);
-        
+
         // create end node
         Node endNode = new Node(goalPos, 0, 0);
 
@@ -95,7 +100,6 @@ public class AStarV2 : MonoBehaviour
             {
                 if (child.position == endNode.position)
                 {
-                    
                     Debug.Log("found it!!!");
                     break;
                 }
@@ -106,36 +110,23 @@ public class AStarV2 : MonoBehaviour
 
                 int samePosOpen = NodeAtThisPosition(openList, child.position);
                 int samePosClosed = NodeAtThisPosition(closedList, child.position);
-
-                if (blockedPos.Contains(child.position)) // check if obstacle
+                
+                if (samePosOpen >= 0 && openList[samePosOpen].f < child.f)
+                {
+                    continue;
+                }
+                if (samePosClosed >= 0 && openList[samePosClosed].f < child.f)
                 {
                     continue;
                 }
 
-                if (samePosOpen >= 0)
-                {
-                    if (openList[samePosOpen].f < child.f)
-                    {
-                        continue;
-                    }
-                }
-
-                if (samePosClosed >= 0)
-                {
-                    if (openList[samePosClosed].f < child.f)
-                    {
-                        continue;
-                    }
-                }
-
                 openList.Add(child);
-
             }
 
             closedList.Add(q);
             pts.Add((Vector2)q.position);
-            
-            
+
+
             its++;
             if (its > 2000)
             {
@@ -200,7 +191,7 @@ public class AStarV2 : MonoBehaviour
                 return i;
             }
         }
-
+        
         return -9999;
     }
     
