@@ -7,6 +7,7 @@ using UnityEngine;
 
 public class AStarV2 : MonoBehaviour
 {
+    public bool debugDraws;
     public Transform goalTransform;
     public GameObject obstacles;
     private List<Vector3> pts = new List<Vector3>();
@@ -28,6 +29,7 @@ public class AStarV2 : MonoBehaviour
         public Node parent; // node you came from to get to this node
         public float g; // distance travelled from start
         public float h; // distance from goal
+        // public float f;
 
         public float f => g + h;
 
@@ -37,6 +39,7 @@ public class AStarV2 : MonoBehaviour
             this.parent = parent;
             this.g = g;
             this.h = h;
+            // this.f = g + h;
         }
     }
 
@@ -47,90 +50,127 @@ public class AStarV2 : MonoBehaviour
     private void OnDrawGizmos()
     {
         pts.Clear();
-        
+        blockedPos.Clear();
         openList.Clear();
         closedList.Clear();
 
-        if (blockedPos.Count == 0)
-        {
-            Obstacles();
-        }
+        Obstacles();
 
-        foreach (Vector2Int v in blockedPos)
-        {
-            Node c = new Node(v, 0, 0);
-            closedList.Add(c);
-        }
-        
         Pathfinding();
 
+
+        if (debugDraws)
+        {
+            Gizmos.color = Color.red;
+            foreach (Node n in closedList)
+            {
+                Vector2 v = n.position;
+                Gizmos.DrawSphere(v, 0.1f);
+            }
+
+            Gizmos.color = Color.green;
+            foreach (Node n in openList)
+            {
+                Vector2 v = n.position;
+                Gizmos.DrawSphere(v, 0.1f);
+            }
+
+            foreach (Node n in openList)
+            {
+                Handles.color = Color.green;
+                Handles.Label((Vector2)n.position, n.f.ToString("f=00"));
+            }
+
+            foreach (Node n in closedList)
+            {
+                Handles.color = Color.red;
+                Handles.Label((Vector2)n.position, n.f.ToString("00"));
+            }
+        }
+
+
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawSphere((Vector2)Vector3ToVector2Int(transform.position), 0.2f);
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawSphere((Vector2)Vector3ToVector2Int(goalTransform.position), 0.2f);
         Handles.color = Color.magenta;
         Handles.DrawAAPolyLine(pts.ToArray());
     }
 
     void Pathfinding()
     {
+        // hehgeheheh
         Vector2Int startPos = Vector3ToVector2Int(transform.position);
         Vector2Int goalPos = Vector3ToVector2Int(goalTransform.position);
 
         // create start node
-        Node startNode = new Node(startPos, 0, 0);
+        Node startNode = new Node(startPos, 0, Vector2.Distance(startPos, goalPos));
 
         // create end node
-        Node endNode = new Node(goalPos, 0, 0);
+        // Node endNode = new Node(goalPos, 0, 0);
 
         // add start node
         openList.Add(startNode);
 
-        int its = 0;
         while (openList.Count > 0)
         {
-            Node q = openList[smallestF(openList)];
-            openList.RemoveAt(smallestF(openList));
+            
+            int oi = SmallestF(openList);
+            Node q = openList[oi];
+            openList.RemoveAt(oi);
+            closedList.Add(q);
 
-            List<Node> children = new List<Node>();
+
             foreach (Vector2Int dir in directions)
             {
                 Vector2Int thisPos = q.position + dir;
-                Node child = new Node(thisPos, 0, 0, q);
-                children.Add(child);
-            }
 
-            foreach (Node child in children)
-            {
-                if (child.position == endNode.position)
-                {
-                    Debug.Log("found it!!!");
-                    break;
-                }
-
-                child.g = q.g + Vector2Int.Distance(child.position, q.position);
-                child.h = Vector2Int.Distance(child.position, goalPos);
-                // f is calculated in node class
-
-                int samePosOpen = NodeAtThisPosition(openList, child.position);
-                int samePosClosed = NodeAtThisPosition(closedList, child.position);
+                // if (Vector2Int.Distance(thisPos, goalPos) > 50)
+                // {
+                //     continue;
+                // }
                 
-                if (samePosOpen >= 0 && openList[samePosOpen].f < child.f)
+                if (blockedPos.Contains(thisPos) || NodeAtThisPosition(closedList, thisPos) >= 0) // blocked or on closed list
                 {
                     continue;
                 }
-                if (samePosClosed >= 0 && openList[samePosClosed].f < child.f)
+                
+                Node child = new Node(thisPos, q.g + Vector2Int.Distance(thisPos, q.position), Vector2Int.Distance(thisPos, goalPos), q);
+                // child.f = child.g + child.h;
+                child.parent = q;
+
+                int openListIndex = NodeAtThisPosition(openList, thisPos);
+
+                if (openListIndex < 0) // not in open list
                 {
-                    continue;
+                    openList.Add(child);
+
+                    if (child.position == goalPos) // found it
+                    {
+                        pts.Clear(); // generate points for AADrawLine
+                        pts.Add((Vector2)child.position);
+                        Node n = child.parent;
+                        while (n != startNode)
+                        {
+                            pts.Add((Vector2)n.position);
+                            n = n.parent;
+                        }
+                        pts.Add((Vector2)startNode.position);
+                        break;
+                    }
                 }
-
-                openList.Add(child);
-            }
-
-            closedList.Add(q);
-            pts.Add((Vector2)q.position);
-
-
-            its++;
-            if (its > 2000)
-            {
-                break;
+                else
+                {
+                    // already in open list, update it if new path is shorter
+                    Node n = openList[openListIndex];
+                    if (child.g < n.g)
+                    {
+                        n.parent = q;
+                        n.g = q.g + 1;
+                        // n.f = n.g + n.h;
+                        openList[openListIndex] = n;
+                    }
+                }
             }
         }
     }
@@ -162,14 +202,18 @@ public class AStarV2 : MonoBehaviour
             Vector2Int BR = Vector3ToVector2Int(bottomRight);
 
 
-            Gizmos.color = Color.red;
-            Gizmos.DrawLine((Vector2)TL, topLeft);
-            Gizmos.DrawLine((Vector2)TR, topRight);
-            Gizmos.DrawLine((Vector2)BL, bottomLeft);
-            Gizmos.DrawLine((Vector2)BR, bottomRight);
+            if (debugDraws)
+            {
+                Gizmos.color = Color.red;
+                Gizmos.DrawLine((Vector2)TL, topLeft);
+                Gizmos.DrawLine((Vector2)TR, topRight);
+                Gizmos.DrawLine((Vector2)BL, bottomLeft);
+                Gizmos.DrawLine((Vector2)BR, bottomRight);
+            }
 
 
-            // add these positions to closedPositions
+
+            // add these positions to blocked positions
             for (int j = TL.x; j <= TR.x; j++)
             {
                 for (int k = TL.y; k >= BL.y; k--)
@@ -182,31 +226,33 @@ public class AStarV2 : MonoBehaviour
         }
     }
     
-    int NodeAtThisPosition(List<Node> nodeList, Vector2Int position)
+    int NodeAtThisPosition(List<Node> nodeList, Vector2Int pos)
     {
         for (int i = 0; i < nodeList.Count; i++)
         {
-            if (nodeList[i].position == position)
+            if (nodeList[i].position == pos)
             {
                 return i;
             }
         }
         
-        return -9999;
+        return -1;
     }
     
-    int smallestF(List<Node> nodes)
+    int SmallestF(List<Node> nodes)
     {
         Node smallest = null;
         int smallestIndex = 0;
         for (int i = 0; i < nodes.Count; i++)
         {
-            if (smallest == null || nodes[i].f < smallest.f)
+            if (i == 0 || nodes[i].f < smallest.f)
             {
                 smallest = nodes[i];
                 smallestIndex = i;
             }
         }
+
+        // Debug.Log("smallestF returning " + smallestIndex);
         return smallestIndex;
     }
     
