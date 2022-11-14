@@ -1,13 +1,9 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
 
 public class AStarV2 : MonoBehaviour
 {
-    public bool debugDraws;
     public Transform goalTransform;
     public GameObject obstacles;
     private List<Vector3> pts = new List<Vector3>();
@@ -29,7 +25,6 @@ public class AStarV2 : MonoBehaviour
         public Node parent; // node you came from to get to this node
         public float g; // distance travelled from start
         public float h; // distance from goal
-        // public float f;
 
         public float f => g + h;
 
@@ -39,7 +34,6 @@ public class AStarV2 : MonoBehaviour
             this.parent = parent;
             this.g = g;
             this.h = h;
-            // this.f = g + h;
         }
     }
 
@@ -55,40 +49,8 @@ public class AStarV2 : MonoBehaviour
         closedList.Clear();
 
         Obstacles();
-
         Pathfinding();
-
-
-        if (debugDraws)
-        {
-            Gizmos.color = Color.red;
-            foreach (Node n in closedList)
-            {
-                Vector2 v = n.position;
-                Gizmos.DrawSphere(v, 0.1f);
-            }
-
-            Gizmos.color = Color.green;
-            foreach (Node n in openList)
-            {
-                Vector2 v = n.position;
-                Gizmos.DrawSphere(v, 0.1f);
-            }
-
-            foreach (Node n in openList)
-            {
-                Handles.color = Color.green;
-                Handles.Label((Vector2)n.position, n.f.ToString("f=00"));
-            }
-
-            foreach (Node n in closedList)
-            {
-                Handles.color = Color.red;
-                Handles.Label((Vector2)n.position, n.f.ToString("00"));
-            }
-        }
-
-
+        
         Gizmos.color = Color.cyan;
         Gizmos.DrawSphere((Vector2)Vector3ToVector2Int(transform.position), 0.2f);
         Gizmos.color = Color.yellow;
@@ -99,58 +61,44 @@ public class AStarV2 : MonoBehaviour
 
     void Pathfinding()
     {
-        // hehgeheheh
+        
         Vector2Int startPos = Vector3ToVector2Int(transform.position);
         Vector2Int goalPos = Vector3ToVector2Int(goalTransform.position);
 
-        // create start node
+        // create and add start node to open list
         Node startNode = new Node(startPos, 0, Vector2.Distance(startPos, goalPos));
-
-        // create end node
-        // Node endNode = new Node(goalPos, 0, 0);
-
-        // add start node
         openList.Add(startNode);
-
+        
         while (openList.Count > 0)
         {
-            
-            int oi = SmallestF(openList);
+            int oi = SmallestF(openList); // get node with smallest F
             Node q = openList[oi];
-            openList.RemoveAt(oi);
+            openList.RemoveAt(oi); // move it from open to closed list
             closedList.Add(q);
-
-
+            
             foreach (Vector2Int dir in directions)
             {
                 Vector2Int thisPos = q.position + dir;
-
-                // if (Vector2Int.Distance(thisPos, goalPos) > 50)
-                // {
-                //     continue;
-                // }
                 
-                if (blockedPos.Contains(thisPos) || NodeAtThisPosition(closedList, thisPos) >= 0) // blocked or on closed list
+                if (blockedPos.Contains(thisPos) || NodeAtThisPosition(closedList, thisPos) >= 0) 
                 {
+                    // blocked or on closed list = ignore it
                     continue;
                 }
-                
+
                 Node child = new Node(thisPos, q.g + Vector2Int.Distance(thisPos, q.position), Vector2Int.Distance(thisPos, goalPos), q);
-                // child.f = child.g + child.h;
-                child.parent = q;
 
                 int openListIndex = NodeAtThisPosition(openList, thisPos);
 
                 if (openListIndex < 0) // not in open list
                 {
                     openList.Add(child);
-
-                    if (child.position == goalPos) // found it
+                    if (child.position == goalPos) // found a path to goal
                     {
-                        pts.Clear(); // generate points for AADrawLine
+                        // draw points
                         pts.Add((Vector2)child.position);
                         Node n = child.parent;
-                        while (n != startNode)
+                        while (n != startNode) // iterate backwards through the parents
                         {
                             pts.Add((Vector2)n.position);
                             n = n.parent;
@@ -167,10 +115,10 @@ public class AStarV2 : MonoBehaviour
                     {
                         n.parent = q;
                         n.g = q.g + 1;
-                        // n.f = n.g + n.h;
                         openList[openListIndex] = n;
                     }
                 }
+                
             }
         }
     }
@@ -200,25 +148,12 @@ public class AStarV2 : MonoBehaviour
             Vector2Int TR = Vector3ToVector2Int(topRight);
             Vector2Int BL = Vector3ToVector2Int(bottomLeft);
             Vector2Int BR = Vector3ToVector2Int(bottomRight);
-
-
-            if (debugDraws)
-            {
-                Gizmos.color = Color.red;
-                Gizmos.DrawLine((Vector2)TL, topLeft);
-                Gizmos.DrawLine((Vector2)TR, topRight);
-                Gizmos.DrawLine((Vector2)BL, bottomLeft);
-                Gizmos.DrawLine((Vector2)BR, bottomRight);
-            }
-
-
-
+            
             // add these positions to blocked positions
             for (int j = TL.x; j <= TR.x; j++)
             {
                 for (int k = TL.y; k >= BL.y; k--)
                 {
-                    // Debug.Log(j + "," + k);
                     Vector2Int closed = new Vector2Int(j, k);
                     blockedPos.Add(closed);
                 }
@@ -235,7 +170,6 @@ public class AStarV2 : MonoBehaviour
                 return i;
             }
         }
-        
         return -1;
     }
     
@@ -251,8 +185,6 @@ public class AStarV2 : MonoBehaviour
                 smallestIndex = i;
             }
         }
-
-        // Debug.Log("smallestF returning " + smallestIndex);
         return smallestIndex;
     }
     
