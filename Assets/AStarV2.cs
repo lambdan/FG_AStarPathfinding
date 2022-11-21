@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 
 public class AStarV2 : MonoBehaviour
@@ -40,23 +39,75 @@ public class AStarV2 : MonoBehaviour
     public List<Node> openList = new List<Node>();
     public List<Node> closedList = new List<Node>();
     public List<Vector2Int> blockedPos = new List<Vector2Int>();
+    
+    private bool isMoving;
+    private Vector3 currentDestination;
+    private int destinationIndex;
 
-    private void OnDrawGizmos()
+    private LineRenderer _lineRenderer;
+
+    void Awake()
     {
-        pts.Clear();
-        blockedPos.Clear();
-        openList.Clear();
-        closedList.Clear();
+        _lineRenderer = GetComponent<LineRenderer>();
+    }
 
-        Obstacles();
-        Pathfinding();
-        
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawSphere((Vector2)Vector3ToVector2Int(transform.position), 0.2f);
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawSphere((Vector2)Vector3ToVector2Int(goalTransform.position), 0.2f);
-        Handles.color = Color.magenta;
-        Handles.DrawAAPolyLine(pts.ToArray());
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Space)) // space to pause
+        {
+            isMoving = !isMoving;
+        }
+
+        if (Input.GetMouseButtonDown(0)) // left click to set new destination
+        {
+            goalTransform.position = (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            destinationIndex = 1;
+
+            Debug.Log("New goal");
+
+            pts.Clear();
+            blockedPos.Clear();
+            openList.Clear();
+            closedList.Clear();
+
+            Obstacles();
+            Pathfinding();
+            
+            UpdateLineRender();
+
+            isMoving = true;
+        }
+    }
+
+    void UpdateLineRender()
+    {
+        _lineRenderer.positionCount = pts.Count - destinationIndex;
+        for (int i = 0; i < _lineRenderer.positionCount; i++)
+        {
+            _lineRenderer.SetPosition(i, pts[i]);
+        }
+    }
+    
+    private void FixedUpdate()
+    {
+        if (isMoving)
+        {
+            currentDestination = pts[pts.Count - destinationIndex];
+            transform.position = Vector3.MoveTowards(transform.position, (Vector2)Vector3ToVector2Int(currentDestination), 0.1f);
+            if (Vector3ToVector2Int(transform.position) == Vector3ToVector2Int(currentDestination))
+            {
+                UpdateLineRender();
+                if (pts.Count - destinationIndex == 0)
+                {
+                    Debug.Log("Hit goal!");
+                    isMoving = false; // hit goal
+                }
+                else
+                {
+                    destinationIndex += 1;
+                }
+            }
+        }
     }
 
     void Pathfinding()
@@ -187,7 +238,9 @@ public class AStarV2 : MonoBehaviour
         }
         return smallestIndex;
     }
-    
-    private Vector2Int Vector3ToVector2Int(Vector3 position) =>
-        new Vector2Int(Mathf.RoundToInt(position.x), Mathf.RoundToInt(position.y));
+
+    private Vector2Int Vector3ToVector2Int(Vector3 position)
+    {
+       return new Vector2Int(Mathf.RoundToInt(position.x), Mathf.RoundToInt(position.y)); 
+    }
 }
