@@ -1,33 +1,41 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+[RequireComponent(typeof(LineRenderer))]
 public class AStarV2 : MonoBehaviour
 {
+    public float accuracy = 0.5f;
+    public float moveSpeed = 0.3f;
     public Transform goalTransform;
     public GameObject obstacles;
     private List<Vector3> pts = new List<Vector3>();
-    private List<Vector2Int> directions = new List<Vector2Int>()
+    private List<Vector2> directions = new List<Vector2>()
     {
-        Vector2Int.up,
-        Vector2Int.down,
-        Vector2Int.left,
-        Vector2Int.right,
-        new Vector2Int(-1, -1), // diagnoals
-        new Vector2Int(-1, 1),
-        new Vector2Int(1, 1),
-        new Vector2Int(1, -1)
+        Vector2.up,
+        Vector2.down,
+        Vector2.left,
+        Vector2.right,
+        new Vector2(-1,-1), // diagnoals
+        new Vector2(-1, 1),
+        new Vector2(1, 1),
+        new Vector2(1, -1)
     };
+
+    private HashSet<Vector2> _alreadyCheckedObstaclesOpen = new HashSet<Vector2>();
+    private HashSet<Vector2> _alreadyCheckedObstaclesClosed = new HashSet<Vector2>();
+    private List<Node> _openList = new List<Node>();
+    private List<Node> _closedList = new List<Node>();
 
     public class Node
     {
-        public Vector2Int position;
+        public Vector2 position;
         public Node parent; // node you came from to get to this node
         public float g; // distance travelled from start
         public float h; // distance from goal
 
         public float f => g + h;
 
-        public Node(Vector2Int position, float g, float h, Node parent = null)
+        public Node(Vector2 position, float g, float h, Node parent = null)
         {
             this.position = position;
             this.parent = parent;
@@ -35,10 +43,6 @@ public class AStarV2 : MonoBehaviour
             this.h = h;
         }
     }
-
-    public List<Node> openList = new List<Node>();
-    public List<Node> closedList = new List<Node>();
-    public List<Vector2Int> blockedPos = new List<Vector2Int>();
     
     private bool isMoving;
     private Vector3 currentDestination;
@@ -63,19 +67,20 @@ public class AStarV2 : MonoBehaviour
             goalTransform.position = (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition);
             destinationIndex = 1;
 
-            Debug.Log("New goal");
-
             pts.Clear();
-            blockedPos.Clear();
-            openList.Clear();
-            closedList.Clear();
-
-            Obstacles();
-            Pathfinding();
+            _openList.Clear();
+            _closedList.Clear();
             
-            UpdateLineRender();
-
-            isMoving = true;
+            if (Pathfinding())
+            {
+                // found path
+                isMoving = true;
+                UpdateLineRender();
+            }
+            else
+            {
+                isMoving = false;
+            }
         }
     }
 
@@ -93,8 +98,8 @@ public class AStarV2 : MonoBehaviour
         if (isMoving)
         {
             currentDestination = pts[pts.Count - destinationIndex];
-            transform.position = Vector3.MoveTowards(transform.position, (Vector2)Vector3ToVector2Int(currentDestination), 0.1f);
-            if (Vector3ToVector2Int(transform.position) == Vector3ToVector2Int(currentDestination))
+            transform.position = Vector2.MoveTowards(transform.position, currentDestination, moveSpeed);
+            if (Vector2.Distance(transform.position, currentDestination) < 0.1f)
             {
                 UpdateLineRender();
                 if (pts.Count - destinationIndex == 0)
@@ -110,40 +115,40 @@ public class AStarV2 : MonoBehaviour
         }
     }
 
-    void Pathfinding()
+    bool Pathfinding()
     {
-        
+        float timeStarted = Time.realtimeSinceStartup;
         Vector2Int startPos = Vector3ToVector2Int(transform.position);
         Vector2Int goalPos = Vector3ToVector2Int(goalTransform.position);
 
         // create and add start node to open list
         Node startNode = new Node(startPos, 0, Vector2.Distance(startPos, goalPos));
-        openList.Add(startNode);
+        _openList.Add(startNode);
         
-        while (openList.Count > 0)
+        while (_openList.Count > 0)
         {
-            int oi = SmallestF(openList); // get node with smallest F
-            Node q = openList[oi];
-            openList.RemoveAt(oi); // move it from open to closed list
-            closedList.Add(q);
+            int oi = SmallestF(_openList); // get node with smallest F
+            Node q = _openList[oi];
+            _openList.RemoveAt(oi); // move it from open to closed list
+            _closedList.Add(q);
             
-            foreach (Vector2Int dir in directions)
+            foreach (Vector2 dir in directions)
             {
-                Vector2Int thisPos = q.position + dir;
+                Vector2 thisPos = q.position + (dir*accuracy);
                 
-                if (blockedPos.Contains(thisPos) || NodeAtThisPosition(closedList, thisPos) >= 0) 
+                if (RectContains(thisPos) || NodeAtThisPosition(_closedList, thisPos) >= 0) 
                 {
                     // blocked or on closed list = ignore it
                     continue;
                 }
 
-                Node child = new Node(thisPos, q.g + Vector2Int.Distance(thisPos, q.position), Vector2Int.Distance(thisPos, goalPos), q);
+                Node child = new Node(thisPos, q.g + Vector2.Distance(thisPos, q.position), Vector2.Distance(thisPos, goalPos), q);
 
-                int openListIndex = NodeAtThisPosition(openList, thisPos);
+                int openListIndex = NodeAtThisPosition(_openList, thisPos);
 
                 if (openListIndex < 0) // not in open list
                 {
-                    openList.Add(child);
+                    _openList.Add(child);
                     if (child.position == goalPos) // found a path to goal
                     {
                         // draw points
@@ -155,64 +160,32 @@ public class AStarV2 : MonoBehaviour
                             n = n.parent;
                         }
                         pts.Add((Vector2)startNode.position);
-                        break;
+                        float timeTook = Time.realtimeSinceStartup - timeStarted;
+                        Debug.Log("Path found! Took " + timeTook + " secs");
+                        return true;
                     }
                 }
                 else
                 {
                     // already in open list, update it if new path is shorter
-                    Node n = openList[openListIndex];
+                    Node n = _openList[openListIndex];
                     if (child.g < n.g)
                     {
                         n.parent = q;
                         n.g = q.g + 1;
-                        openList[openListIndex] = n;
+                        _openList[openListIndex] = n;
                     }
                 }
                 
             }
         }
+
+        Debug.LogError("Couldnt find path?");
+        return false;
     }
 
-    void Obstacles()
-    {
-        // find where obstacles are (our path cannot cross that area)
-        for (int i = 0; i < obstacles.transform.childCount; i++)
-        {
-            GameObject o = obstacles.transform.GetChild(i).gameObject;
-            if (!o.activeSelf)
-            {
-                continue;
-            }
-
-            SpriteRenderer sr = o.GetComponent<SpriteRenderer>();
-            Vector3 topLeft = sr.bounds.center - new Vector3(sr.transform.localScale.x * sr.size.x / 2,
-                -sr.transform.localScale.y * sr.size.y / 2, 0);
-            Vector3 topRight = sr.bounds.center - new Vector3(sr.transform.localScale.x * -sr.size.x / 2,
-                -sr.transform.localScale.y * sr.size.y / 2, 0);
-            Vector3 bottomLeft = sr.bounds.center - new Vector3(sr.transform.localScale.x * sr.size.x / 2,
-                sr.transform.localScale.y * sr.size.y / 2, 0);
-            Vector3 bottomRight = sr.bounds.center - new Vector3(sr.transform.localScale.x * -sr.size.x / 2,
-                sr.transform.localScale.y * sr.size.y / 2, 0);
-
-            Vector2Int TL = Vector3ToVector2Int(topLeft);
-            Vector2Int TR = Vector3ToVector2Int(topRight);
-            Vector2Int BL = Vector3ToVector2Int(bottomLeft);
-            Vector2Int BR = Vector3ToVector2Int(bottomRight);
-            
-            // add these positions to blocked positions
-            for (int j = TL.x; j <= TR.x; j++)
-            {
-                for (int k = TL.y; k >= BL.y; k--)
-                {
-                    Vector2Int closed = new Vector2Int(j, k);
-                    blockedPos.Add(closed);
-                }
-            }
-        }
-    }
     
-    int NodeAtThisPosition(List<Node> nodeList, Vector2Int pos)
+    int NodeAtThisPosition(List<Node> nodeList, Vector2 pos)
     {
         for (int i = 0; i < nodeList.Count; i++)
         {
@@ -243,4 +216,38 @@ public class AStarV2 : MonoBehaviour
     {
        return new Vector2Int(Mathf.RoundToInt(position.x), Mathf.RoundToInt(position.y)); 
     }
+
+    bool RectContains(Vector2 pos)
+    {
+        // check if we already checked this position
+        if (_alreadyCheckedObstaclesClosed.Contains(pos))
+        {
+            // Debug.Log("cached closed");
+            return true;
+        }
+        if (_alreadyCheckedObstaclesOpen.Contains(pos))
+        {
+            // Debug.Log("cached open");
+            return false;
+        }
+        
+        for (int i = 0; i < obstacles.transform.childCount; i++)
+        {
+            GameObject o = obstacles.transform.GetChild(i).gameObject;
+            if (!o.activeSelf)
+            {
+                continue;
+            }
+
+            SpriteRenderer sr = o.GetComponent<SpriteRenderer>();
+            if (sr.bounds.Contains(pos))
+            {
+                _alreadyCheckedObstaclesClosed.Add(pos);
+                return true;
+            }
+            _alreadyCheckedObstaclesOpen.Add(pos);
+        }
+        return false;
+    }
+        
 }
