@@ -4,7 +4,7 @@ using UnityEngine;
 [RequireComponent(typeof(LineRenderer))]
 public class AStarV2 : MonoBehaviour
 {
-    public float accuracy = 0.5f;
+    public float precision = 0.25f;
     public float moveSpeed = 0.3f;
     public Transform goalTransform;
     public GameObject obstacles;
@@ -71,7 +71,7 @@ public class AStarV2 : MonoBehaviour
             _openList.Clear();
             _closedList.Clear();
             
-            if (Pathfinding())
+            if (Pathfinding(transform.position, goalTransform.position))
             {
                 // found path
                 isMoving = true;
@@ -99,7 +99,7 @@ public class AStarV2 : MonoBehaviour
         {
             currentDestination = pts[pts.Count - destinationIndex];
             transform.position = Vector2.MoveTowards(transform.position, currentDestination, moveSpeed);
-            if (Vector2.Distance(transform.position, currentDestination) < 0.1f)
+            if (Vector2.Distance(transform.position, currentDestination) < precision)
             {
                 UpdateLineRender();
                 if (pts.Count - destinationIndex == 0)
@@ -115,12 +115,14 @@ public class AStarV2 : MonoBehaviour
         }
     }
 
-    bool Pathfinding()
+    bool Pathfinding(Vector2 startPos, Vector2 goalPos)
     {
         float timeStarted = Time.realtimeSinceStartup;
-        Vector2Int startPos = Vector3ToVector2Int(transform.position);
-        Vector2Int goalPos = Vector3ToVector2Int(goalTransform.position);
 
+        // round vector components to accuracy
+        startPos = new Vector2(transform.position.x - (transform.position.x % precision), transform.position.y - (transform.position.y % precision));
+        goalPos = new Vector2(goalPos.x - (goalPos.x % precision), goalPos.y - (goalPos.y % precision));
+        
         // create and add start node to open list
         Node startNode = new Node(startPos, 0, Vector2.Distance(startPos, goalPos));
         _openList.Add(startNode);
@@ -134,7 +136,8 @@ public class AStarV2 : MonoBehaviour
             
             foreach (Vector2 dir in directions)
             {
-                Vector2 thisPos = q.position + (dir*accuracy);
+                Vector2 thisPos = q.position + (dir*precision);
+                // thisPos = new Vector2(thisPos.x - (thisPos.x % precision), thisPos.y - (thisPos.y % precision));
                 
                 if (RectContains(thisPos) || NodeAtThisPosition(_closedList, thisPos) >= 0) 
                 {
@@ -149,7 +152,8 @@ public class AStarV2 : MonoBehaviour
                 if (openListIndex < 0) // not in open list
                 {
                     _openList.Add(child);
-                    if (child.position == goalPos) // found a path to goal
+                    // if (child.position == goalPos) // found a path to goal
+                    if(Vector2.Distance(child.position, goalPos) <= precision)
                     {
                         // draw points
                         pts.Add((Vector2)child.position);
@@ -211,12 +215,7 @@ public class AStarV2 : MonoBehaviour
         }
         return smallestIndex;
     }
-
-    private Vector2Int Vector3ToVector2Int(Vector3 position)
-    {
-       return new Vector2Int(Mathf.RoundToInt(position.x), Mathf.RoundToInt(position.y)); 
-    }
-
+    
     bool RectContains(Vector2 pos)
     {
         // check if we already checked this position
