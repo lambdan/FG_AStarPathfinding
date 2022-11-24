@@ -4,8 +4,12 @@ using UnityEngine;
 [RequireComponent(typeof(LineRenderer))]
 public class AStarV2 : MonoBehaviour
 {
-    public float precision = 0.25f;
-    public float moveSpeed = 0.3f;
+    [Tooltip("Lower value means more precise (takes longer time to calculate)")]
+    [Range(0.2f,1.0f)] public float precision = 0.5f;
+    
+    [Tooltip("How fast the character will move")]
+    [Range(1,50)] public float moveSpeed = 10;
+    
     public Transform goalTransform;
     public GameObject obstacles;
     private List<Vector3> pts = new List<Vector3>();
@@ -98,8 +102,8 @@ public class AStarV2 : MonoBehaviour
         if (isMoving)
         {
             currentDestination = pts[pts.Count - destinationIndex];
-            transform.position = Vector2.MoveTowards(transform.position, currentDestination, moveSpeed);
-            if (Vector2.Distance(transform.position, currentDestination) < precision)
+            transform.position = Vector2.MoveTowards(transform.position, currentDestination, moveSpeed * Time.fixedDeltaTime);
+            if (Vector2.Distance(transform.position, currentDestination) <= precision)
             {
                 UpdateLineRender();
                 if (pts.Count - destinationIndex == 0)
@@ -119,42 +123,38 @@ public class AStarV2 : MonoBehaviour
     {
         float timeStarted = Time.realtimeSinceStartup;
         
-        // round vector components to accuracy
-        // Debug.Log("clicked: " + goalPos);
+        // round vector components to accuracy (otherwise you may click on a spot that is never accessible)
         startPos = new Vector2(transform.position.x - (transform.position.x % precision), transform.position.y - (transform.position.y % precision));
         goalPos = new Vector2(goalPos.x - (goalPos.x % precision), goalPos.y - (goalPos.y % precision));
-        // Debug.Log("corrected: " + goalPos);
-        
+
         // create and add start node to open list
         Node startNode = new Node(startPos, 0, Vector2.Distance(startPos, goalPos));
         _openList.Add(startNode);
         
         while (_openList.Count > 0)
         {
-            int oi = SmallestF(_openList); // get node with smallest F
-            Node q = _openList[oi];
-            _openList.RemoveAt(oi); // move it from open to closed list
-            _closedList.Add(q);
+            int smallestFindex = SmallestF(_openList); // get node with smallest F
+            Node smallestFnode = _openList[smallestFindex];
+            _openList.RemoveAt(smallestFindex); // move it from open to closed list
+            _closedList.Add(smallestFnode);
             
             foreach (Vector2 dir in directions)
             {
-                Vector2 thisPos = q.position + (dir*precision);
-                // thisPos = new Vector2(thisPos.x - (thisPos.x % precision), thisPos.y - (thisPos.y % precision));
-                
+                Vector2 thisPos = smallestFnode.position + (dir*precision);
+
                 if (RectContains(thisPos) || NodeAtThisPosition(_closedList, thisPos) >= 0) 
                 {
                     // blocked or on closed list = ignore it
                     continue;
                 }
 
-                Node child = new Node(thisPos, q.g + Vector2.Distance(thisPos, q.position), Vector2.Distance(thisPos, goalPos), q);
+                Node child = new Node(thisPos, smallestFnode.g + Vector2.Distance(thisPos, smallestFnode.position), Vector2.Distance(thisPos, goalPos), smallestFnode);
 
                 int openListIndex = NodeAtThisPosition(_openList, thisPos);
 
                 if (openListIndex < 0) // not in open list
                 {
                     _openList.Add(child);
-                    // if (child.position == goalPos) // found a path to goal
                     if(Vector2.Distance(child.position, goalPos) <= precision)
                     {
                         // draw points
@@ -177,8 +177,8 @@ public class AStarV2 : MonoBehaviour
                     Node n = _openList[openListIndex];
                     if (child.g < n.g)
                     {
-                        n.parent = q;
-                        n.g = q.g + Vector2.Distance(n.position, q.position);
+                        n.parent = smallestFnode;
+                        n.g = smallestFnode.g + Vector2.Distance(n.position, smallestFnode.position);
                         _openList[openListIndex] = n;
                     }
                 }
@@ -223,12 +223,10 @@ public class AStarV2 : MonoBehaviour
         // check if we already checked this position
         if (_alreadyCheckedObstaclesClosed.Contains(pos))
         {
-            // Debug.Log("cached closed");
             return true;
         }
-        if (_alreadyCheckedObstaclesOpen.Contains(pos))
+        else if (_alreadyCheckedObstaclesOpen.Contains(pos))
         {
-            // Debug.Log("cached open");
             return false;
         }
         

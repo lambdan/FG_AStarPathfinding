@@ -5894,8 +5894,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d265b71932b9ad14196b2f7bf7152a78, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  precision: 0.25
-  moveSpeed: 0.5
+  precision: 0.5
+  moveSpeed: 10
   goalTransform: {fileID: 973082691}
   obstacles: {fileID: 871763837}
 --- !u!4 &2104430731
