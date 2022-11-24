@@ -118,10 +118,12 @@ public class AStarV2 : MonoBehaviour
     bool Pathfinding(Vector2 startPos, Vector2 goalPos)
     {
         float timeStarted = Time.realtimeSinceStartup;
-
+        
         // round vector components to accuracy
+        // Debug.Log("clicked: " + goalPos);
         startPos = new Vector2(transform.position.x - (transform.position.x % precision), transform.position.y - (transform.position.y % precision));
         goalPos = new Vector2(goalPos.x - (goalPos.x % precision), goalPos.y - (goalPos.y % precision));
+        // Debug.Log("corrected: " + goalPos);
         
         // create and add start node to open list
         Node startNode = new Node(startPos, 0, Vector2.Distance(startPos, goalPos));
@@ -176,7 +178,7 @@ public class AStarV2 : MonoBehaviour
                     if (child.g < n.g)
                     {
                         n.parent = q;
-                        n.g = q.g + 1;
+                        n.g = q.g + Vector2.Distance(n.position, q.position);
                         _openList[openListIndex] = n;
                     }
                 }
