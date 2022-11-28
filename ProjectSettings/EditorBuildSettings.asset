@@ -6,6 +6,6 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/AStarScene.unity
+    path: Assets/NoGrid/NoGridScene.unity
     guid: 3f5e654926c991e4285c6c74e42be2a8
   m_configObjects: {}
