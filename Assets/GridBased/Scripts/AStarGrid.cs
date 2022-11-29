@@ -8,7 +8,7 @@ public class AStarGrid : MonoBehaviour
     [Tooltip("How fast the character will move")]
     [Range(1,50)] public float moveSpeed = 10;
 
-    public Grid grid;
+    public GridScript grid;
     public Transform goalTransform;
     
     private List<Vector3> pts = new List<Vector3>();
@@ -18,10 +18,10 @@ public class AStarGrid : MonoBehaviour
         Vector2Int.down,
         Vector2Int.left,
         Vector2Int.right,
-        new Vector2Int(-1, -1), // diagnoals
-        new Vector2Int(1,1),
-        new Vector2Int(1, -1),
-        new Vector2Int(-1, 1)
+        // new Vector2Int(-1, -1), // diagnoals
+        // new Vector2Int(1,1),
+        // new Vector2Int(1, -1),
+        // new Vector2Int(-1, 1)
     };
     
     private List<Node> _openList = new List<Node>();
@@ -46,7 +46,7 @@ public class AStarGrid : MonoBehaviour
     }
     
     private bool isMoving;
-    private Vector2 currentDestination;
+    private Vector3 currentDestination;
     private int destinationIndex;
 
     private LineRenderer _lineRenderer;
@@ -60,19 +60,21 @@ public class AStarGrid : MonoBehaviour
 
     private void Update()
     {
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            isMoving = !isMoving;
+        }
+        
         if (Input.GetMouseButtonDown(0)) // left click to set new destination
         {
-            goalTransform.position = (Vector2)V3toV2Int(Camera.main.ScreenToWorldPoint(Input.mousePosition));
-
-            Debug.Log(goalTransform.position);
-            
+            goalTransform.position = (Vector2)CommonFunctions.V3toV2Int(Camera.main.ScreenToWorldPoint(Input.mousePosition));
             destinationIndex = 1;
 
             pts.Clear();
             _openList.Clear();
             _closedList.Clear();
             
-            if (Pathfinding(V3toV2Int(transform.position), V3toV2Int(goalTransform.position)))
+            if (Pathfinding(CommonFunctions.V3toV2Int(transform.position), CommonFunctions.V3toV2Int(goalTransform.position)))
             {
                 // found path
                 isMoving = true;
@@ -98,9 +100,10 @@ public class AStarGrid : MonoBehaviour
     {
         if (isMoving)
         {
-            currentDestination = (Vector2)pts[pts.Count - destinationIndex];
-            transform.position = new Vector3(currentDestination.x, currentDestination.y, -10);
-            if ((Vector2)transform.position == currentDestination)
+            currentDestination = pts[pts.Count - destinationIndex];
+            currentDestination.z = -10; // z = -10 to get "on top" of the squares
+            transform.position = Vector3.MoveTowards(transform.position, currentDestination, moveSpeed * Time.fixedDeltaTime);
+            if (transform.position == currentDestination)
             {
                 UpdateLineRender();
                 if (pts.Count - destinationIndex == 0)
@@ -213,14 +216,7 @@ public class AStarGrid : MonoBehaviour
     
     bool IsBlocked(Vector2Int pos)
     {
-        bool state = grid.IsBlocked(pos.x, pos.y);
-        Debug.Log(pos + " is blocked: " + state);
-        return state;
+        return grid.IsBlocked(pos.x, pos.y);
     }
 
-    Vector2Int V3toV2Int(Vector3 v3)
-    {
-        return new Vector2Int((int)v3.x, (int)v3.y);
-    }
-        
 }
