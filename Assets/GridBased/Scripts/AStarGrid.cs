@@ -11,14 +11,14 @@ public class AStarGrid : MonoBehaviour
     public GridScript grid;
     public Transform goalTransform;
     
-    private List<Vector3> pts = new List<Vector3>();
+    private List<Vector3> _pts = new List<Vector3>();
     private List<Vector2Int> directions = new List<Vector2Int>()
     {
         Vector2Int.up,
         Vector2Int.down,
         Vector2Int.left,
         Vector2Int.right,
-        // new Vector2Int(-1, -1), // diagnoals
+        // new Vector2Int(-1, -1), // diagnoals, i think it looks nicer in a grid to not have them
         // new Vector2Int(1,1),
         // new Vector2Int(1, -1),
         // new Vector2Int(-1, 1)
@@ -70,7 +70,7 @@ public class AStarGrid : MonoBehaviour
             goalTransform.position = (Vector2)CommonFunctions.V3toV2Int(Camera.main.ScreenToWorldPoint(Input.mousePosition));
             destinationIndex = 1;
 
-            pts.Clear();
+            _pts.Clear();
             _openList.Clear();
             _closedList.Clear();
             
@@ -89,10 +89,10 @@ public class AStarGrid : MonoBehaviour
 
     void UpdateLineRender()
     {
-        _lineRenderer.positionCount = pts.Count - destinationIndex;
+        _lineRenderer.positionCount = _pts.Count - destinationIndex;
         for (int i = 0; i < _lineRenderer.positionCount; i++)
         {
-            _lineRenderer.SetPosition(i, pts[i]);
+            _lineRenderer.SetPosition(i, _pts[i]);
         }
     }
     
@@ -100,13 +100,13 @@ public class AStarGrid : MonoBehaviour
     {
         if (isMoving)
         {
-            currentDestination = pts[pts.Count - destinationIndex];
+            currentDestination = _pts[_pts.Count - destinationIndex];
             currentDestination.z = -10; // z = -10 to get "on top" of the squares
             transform.position = Vector3.MoveTowards(transform.position, currentDestination, moveSpeed * Time.fixedDeltaTime);
             if (transform.position == currentDestination)
             {
                 UpdateLineRender();
-                if (pts.Count - destinationIndex == 0)
+                if (_pts.Count - destinationIndex == 0)
                 {
                     Debug.Log("Hit goal!");
                     isMoving = false; // hit goal
@@ -154,14 +154,14 @@ public class AStarGrid : MonoBehaviour
                     if (child.position == goalPos) // found it!
                     {
                         // draw points
-                        pts.Add((Vector2)child.position);
+                        _pts.Add((Vector2)child.position);
                         Node n = child.parent;
                         while (n != startNode) // iterate backwards through the parents
                         {
-                            pts.Add((Vector2)n.position);
+                            _pts.Add((Vector2)n.position);
                             n = n.parent;
                         }
-                        pts.Add((Vector2)startNode.position);
+                        _pts.Add((Vector2)startNode.position);
                         float timeTook = Time.realtimeSinceStartup - timeStarted;
                         Debug.Log("Path found! Took " + timeTook + " secs");
                         return true;

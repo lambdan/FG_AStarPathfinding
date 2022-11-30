@@ -85,8 +85,6 @@ public class GridScript : MonoBehaviour
         {
             for (int y = 0; y < _height; y++)
             {
-                // V2to
-
                 if (x == CommonFunctions.V3toV2Int(_player.position).x && y == CommonFunctions.V3toV2Int(_player.position).y)
                 {
                     _gridDict[x][y].OpenSquare(); // leave square player is on open
@@ -118,9 +116,9 @@ public class GridScript : MonoBehaviour
 
     public bool IsBlocked(int x, int y)
     {
-        // report squares outside the grid as blocked
         if (x < 0 || x >= _width || y < 0 || y >= _height)
         {
+            // report squares outside the grid as blocked
             return true;
         }
 

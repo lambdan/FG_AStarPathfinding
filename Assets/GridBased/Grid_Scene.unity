@@ -755,6 +755,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b3355c0b275ef9b458b421b3e5989dec, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 10
+  moveSpeed: 7
   grid: {fileID: 138821160}
   goalTransform: {fileID: 973082691}
