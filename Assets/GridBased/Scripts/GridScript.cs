@@ -11,6 +11,13 @@ public class GridScript : MonoBehaviour
     [SerializeField] [Range(0, 1)] private float _closedChance = 0.2f;
 
     private Dictionary<int, Dictionary<int, SquareScript>> _gridDict;
+    private AStarGrid _aStarScript;
+
+    void Awake()
+    {
+        _aStarScript = FindObjectOfType<AStarGrid>();
+        
+    }
 
     void Start()
     {
@@ -21,15 +28,7 @@ public class GridScript : MonoBehaviour
         Camera.main.transform.position = _gridDict[_width / 2][_height / 2].transform.position;
         Camera.main.orthographicSize = (Mathf.Max(_width, _height) / 2) + 1;
     }
-
-    void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.R))
-        {
-            RandomizeGrid();
-        }
-    }
-
+    
     void DrawGridLines()
     {
         GameObject lineParent = new GameObject("Grid Lines");
@@ -39,7 +38,7 @@ public class GridScript : MonoBehaviour
             LineRenderer a = new GameObject("Vertical Line " + i).AddComponent<LineRenderer>();
             a.gameObject.transform.parent = lineParent.transform;
             a.positionCount = 2;
-            a.startWidth = a.endWidth = 0.08f;
+            a.startWidth = a.endWidth = 0.05f;
             a.material = _lineMaterial;
             a.SetPosition(0, new Vector3(-0.5f + i * 1f, -0.5f, -10));
             a.SetPosition(1, new Vector3(-0.5f + i * 1f, _height - 0.5f, -10));
@@ -50,7 +49,7 @@ public class GridScript : MonoBehaviour
             LineRenderer a = new GameObject("Horizontal Line " + i).AddComponent<LineRenderer>();
             a.gameObject.transform.parent = lineParent.transform;
             a.positionCount = 2;
-            a.startWidth = a.endWidth = 0.08f;
+            a.startWidth = a.endWidth = 0.05f;
             a.material = _lineMaterial;
             a.SetPosition(0, new Vector3(-0.5f, -0.5f + i * 1f, -10));
             a.SetPosition(1, new Vector3(_width - 0.5f, -0.5f + i * 1f, -10));
@@ -80,6 +79,11 @@ public class GridScript : MonoBehaviour
     [ContextMenu("Randomize Grid")]
     public void RandomizeGrid()
     {
+        if (_aStarScript.IsMoving())
+        {
+            // prevent changing the grid when moving
+            return;
+        }
         
         for (int x = 0; x < _width; x++)
         {

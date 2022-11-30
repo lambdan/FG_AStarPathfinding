@@ -4353,7 +4353,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'LMB: set destination
+  m_text: 'RMB: set destination
 
     SPACE: pause
 

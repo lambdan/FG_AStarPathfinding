@@ -66,7 +66,7 @@ public class AStarV2 : MonoBehaviour
             isMoving = !isMoving;
         }
 
-        if (Input.GetMouseButtonDown(0)) // left click to set new destination
+        if (Input.GetMouseButtonDown(1)) // right click to set new destination
         {
             goalTransform.position = (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition);
             destinationIndex = 1;

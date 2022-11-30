@@ -97,5 +97,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95d269603f9e75540b44d4991e4b37aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _openColor: {r: 0.26415092, g: 0.26415092, b: 0.26415092, a: 1}
-  _closedColor: {r: 1, g: 1, b: 1, a: 1}
+  _openColor: {r: 0, g: 0.1981132, b: 0.038711794, a: 1}
+  _closedColor: {r: 0.4811321, g: 0.19744574, b: 0.19744574, a: 1}

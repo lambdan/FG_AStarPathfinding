@@ -1,6 +1,6 @@
 using System.Collections.Generic;
-using System.Security.Cryptography;
 using UnityEngine;
+using UnityEngine.UI;
 
 [RequireComponent(typeof(LineRenderer))]
 public class AStarGrid : MonoBehaviour
@@ -8,22 +8,13 @@ public class AStarGrid : MonoBehaviour
     [Tooltip("How fast the character will move")]
     [Range(1,50)] public float moveSpeed = 10;
 
+    [SerializeField] private Toggle _diagonalsAllowed;
+
     public GridScript grid;
     public Transform goalTransform;
     
     private List<Vector3> _pts = new List<Vector3>();
-    private List<Vector2Int> directions = new List<Vector2Int>()
-    {
-        Vector2Int.up,
-        Vector2Int.down,
-        Vector2Int.left,
-        Vector2Int.right,
-        // new Vector2Int(-1, -1), // diagnoals, i think it looks nicer in a grid to not have them
-        // new Vector2Int(1,1),
-        // new Vector2Int(1, -1),
-        // new Vector2Int(-1, 1)
-    };
-    
+
     private List<Node> _openList = new List<Node>();
     private List<Node> _closedList = new List<Node>();
 
@@ -65,7 +56,7 @@ public class AStarGrid : MonoBehaviour
             isMoving = !isMoving;
         }
         
-        if (Input.GetMouseButtonDown(0)) // left click to set new destination
+        if (Input.GetMouseButtonDown(1)) // right click to set new destination
         {
             goalTransform.position = (Vector2)CommonFunctions.V3toV2Int(Camera.main.ScreenToWorldPoint(Input.mousePosition));
             destinationIndex = 1;
@@ -122,6 +113,21 @@ public class AStarGrid : MonoBehaviour
     bool Pathfinding(Vector2Int startPos, Vector2Int goalPos)
     {
         float timeStarted = Time.realtimeSinceStartup;
+        List<Vector2Int> allowedDirections = new List<Vector2Int>()
+        {
+            Vector2Int.up,
+            Vector2Int.down,
+            Vector2Int.left,
+            Vector2Int.right,
+        };
+
+        if (_diagonalsAllowed.isOn)
+        {
+            allowedDirections.Add(new Vector2Int(-1, -1));
+            allowedDirections.Add(new Vector2Int(1, 1));
+            allowedDirections.Add(new Vector2Int(1, -1));
+            allowedDirections.Add(new Vector2Int(-1, 1));
+        }
         
         // create and add start node to open list
         Node startNode = new Node(startPos, 0, Vector2Int.Distance(startPos, goalPos));
@@ -134,7 +140,7 @@ public class AStarGrid : MonoBehaviour
             _openList.RemoveAt(smallestFindex); // move it from open to closed list
             _closedList.Add(smallestFnode);
             
-            foreach (Vector2Int dir in directions)
+            foreach (Vector2Int dir in allowedDirections)
             {
                 Vector2Int thisPos = smallestFnode.position + dir;
 
@@ -217,6 +223,11 @@ public class AStarGrid : MonoBehaviour
     bool IsBlocked(Vector2Int pos)
     {
         return grid.IsBlocked(pos.x, pos.y);
+    }
+
+    public bool IsMoving()
+    {
+        return isMoving;
     }
 
 }
